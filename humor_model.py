@@ -9,6 +9,7 @@ from statistics import mean
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 import logging
+import pandas as pd
 from simpletransformers.classification import (
     ClassificationModel,
     ClassificationArgs
@@ -17,6 +18,13 @@ from simpletransformers.classification import (
 
 prettyprinter.install_extras(include=["dataclasses",], warn_on_error=True)
 
+
+
+
+prefix = 'data/'
+train_df = pd.read_csv(prefix + 'train.csv')
+
+train_df.head()
 
 #train_df['labels'] = (train_df['labels'] == 1.0).astype(int)
 
