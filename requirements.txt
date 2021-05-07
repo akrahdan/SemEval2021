@@ -1,0 +1,10 @@
+fastai==1.0.61
+scikit-learn==0.24.2
+prettyprinter==0.18.0
+wandb
+transformers
+tensorboardx
+pandas
+tqdm
+simpletransformers
+
