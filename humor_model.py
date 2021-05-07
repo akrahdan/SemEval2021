@@ -19,17 +19,10 @@ from simpletransformers.classification import (
 prettyprinter.install_extras(include=["dataclasses",], warn_on_error=True)
 
 
-
-
 prefix = 'data/'
 train_df = pd.read_csv(prefix + 'train.csv')
 
-train_df.head()
-
-#train_df['labels'] = (train_df['labels'] == 1.0).astype(int)
-
-train_df, eval_df = train_test_split(train_df, test_size=0.2)
-
+#train_df.head()
 
 
 sweep_result = pd.read_csv(prefix + 'sweep.csv')
@@ -50,17 +43,17 @@ model_args.manual_seed = 4
 model_args.max_seq_length = 256
 model_args.multiprocessing_chunksize = 5000
 model_args.no_cache = True
-#model_args.no_save = True
+
 model_args.num_train_epochs = 10
 model_args.overwrite_output_dir = True
 model_args.reprocess_input_data = True
 model_args.train_batch_size = 4
-#model_args.regression = True
+
 model_args.gradient_accumulation_steps = 2
 model_args.train_custom_parameters_only = False
 model_args.save_eval_checkpoints = False
 model_args.save_model_every_epoch = False
-model_args.labels_list = [1, 0]
+
 model_args.output_dir = "tuned_output"
 model_args.best_model_dir = "tuned_output/best_model"
 model_args.wandb_project = "post_valuation"
@@ -102,17 +95,90 @@ model_args.update_from_dict(cleaned_args)
 
 pprint(model_args)
 
+test_df = pd.read_csv('data/test.csv')
+gold_test = pd.read_csv(prefix + 'gold_test.csv')
 
 
-# Create a TransformerModel
-model = ClassificationModel(
-        "roberta", "roberta-large", use_cuda=True, args=model_args)
+def evaluate_task1():
+    global train_df
+    train_df = pd.DataFrame({
+    'text': train_df['text'].replace(r'\n', ' ', regex=True),
+    'labels':train_df['is_humor']
+    })
 
-# Train the model
-model.train_model(
-    train_df,
-    eval_df=eval_df,
-    accuracy=lambda truth, predictions: accuracy_score(
+    train_df['labels'] = (train_df['labels'] == 1).astype(int)
+    train_df, eval_df = train_test_split(train_df, test_size=0.2)
+    preds, outputs = train_model()
+    test_df["is_humor"] = preds
+    score = accuracy_score(gold_test.offense_rating.to_list(), test_df.offense_rating.to_list())
+    pprint("RMSE: ", score)
+
+def evaluate_task2():
+    
+    global train_df
+    train_df = pd.DataFrame({
+    'text': train_df['text'].replace(r'\n', ' ', regex=True),
+    'labels':train_df['humor_rating']
+    })
+    train_df = train_df.dropna()
+
+    train_df, eval_df = train_test_split(train_df, test_size=0.2)
+    preds, outputs = train_model(regression=True)
+    test_df["humor_rating"] = preds
+    error = mean_squared_error(gold_test.offense_rating.to_list(), test_df.offense_rating.to_list(), squared=False)
+    pprint("RMSE: ", error)
+
+def evaluate_task3():
+    global train_df
+    pprint(train_df.head())
+    train_df = pd.DataFrame({
+    'text': train_df['text'].replace(r'\n', ' ', regex=True),
+    'labels':train_df['offense_rating']
+    })
+
+    train_df = train_df.dropna()
+
+    train_df, eval_df = train_test_split(train_df, test_size=0.2)
+    preds, outputs = train_model(regression=True)
+    test_df["offense_rating"] = preds
+    error = mean_squared_error(gold_test.offense_rating.to_list(), test_df.offense_rating.to_list(), squared=False)
+    pprint("RMSE: ", error)
+
+def train_model(regression:bool = False):
+    if regression:
+        model_args.regression = True
+        model = ClassificationModel(
+        "roberta", "roberta-large", num_labels=1, use_cuda=True, args=model_args)
+
+        model.train_model(
+            train_df,
+            eval_df=eval_df,
+            rmse=lambda truth, predictions: mean_squared_error(
             truth, [round(p) for p in predictions]
-    ),
-)
+            ),
+        ) 
+
+    else:
+
+        model_args.labels_list = [1, 0]
+        model = ClassificationModel(
+        "roberta", "roberta-large", use_cuda=True, args=model_args) 
+        model.train_model(
+            train_df,
+            val_df=eval_df,
+            accuracy=lambda truth, predictions: accuracy_score(
+            truth, [round(p) for p in predictions]
+            ),
+            
+        )
+    
+    
+    predict = test_df.text.apply(lambda x: x.replace('\n', ' ')).tolist()
+    preds, outputs = model.predict(predict)
+    
+    return preds, outputs
+
+    
+    
+
+    
