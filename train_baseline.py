@@ -2,7 +2,8 @@ import pandas as pd
 from fastai.text import *
 import sklearn.feature_extraction.text as sklearn_text
 import pickle
-from .baseline_model import BaselineModel
+from baseline_model import BaselineModel
+
 datapath = 'data'
 path = Path(datapath)
 df = pd.read_csv(path/'train.csv')
@@ -46,9 +47,9 @@ def create_label(regression:bool = False):
     return rating
         
   
-  rating = create_label()
+rating = create_label()
 
-  model = BaselineModel(rating)
-  model.train()
+model = BaselineModel(rating)
+model.train()
 
 

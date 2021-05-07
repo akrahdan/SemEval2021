@@ -5,6 +5,7 @@ wandb
 transformers
 tensorboardx
 pandas
+spacy
 tqdm
 simpletransformers
 
